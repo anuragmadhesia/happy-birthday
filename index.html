@@ -357,6 +357,78 @@
     color: rgba(255,255,255,.4); pointer-events: none; white-space: nowrap;
     animation: pulse 3s ease-in-out infinite;
   }
+
+  /* ── COUNTDOWN ── */
+  #countdown-wrap { margin-top: 14px; animation: fadeSlide .8s .5s both; }
+
+  .countdown-label {
+    font-family: 'Dancing Script', cursive;
+    font-size: clamp(.95rem, 3vw, 1.3rem);
+    color: rgba(255,180,120,.85);
+    margin-bottom: 10px;
+  }
+
+  .countdown-grid {
+    display: inline-flex; gap: clamp(8px,2.5vw,18px);
+    justify-content: center; flex-wrap: wrap;
+  }
+
+  .cd-box {
+    display: flex; flex-direction: column; align-items: center;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: clamp(8px,2vw,14px) clamp(10px,3vw,22px);
+    min-width: clamp(56px, 12vw, 80px);
+    position: relative; overflow: hidden;
+  }
+  .cd-box::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,79,139,.15), rgba(168,85,247,.12));
+    border-radius: inherit;
+  }
+  .cd-num {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.7rem, 6vw, 3rem);
+    line-height: 1;
+    background: linear-gradient(160deg, #fff 30%, #ffb085);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    position: relative; z-index: 1;
+    transition: transform .15s;
+  }
+  .cd-num.tick { animation: cdTick .2s ease-out; }
+  .cd-unit {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: clamp(.55rem, 1.8vw, .75rem);
+    letter-spacing: .08em; text-transform: uppercase;
+    color: rgba(255,150,180,.8);
+    position: relative; z-index: 1;
+    margin-top: 2px;
+  }
+
+  /* Birthday mode styles */
+  #birthday-crown { font-size: clamp(3rem, 10vw, 6rem); animation: float 3s ease-in-out infinite; display: block; }
+  .bday-title {
+    font-family: 'Pacifico', cursive;
+    font-size: clamp(2.2rem, 9vw, 5.5rem);
+    background: linear-gradient(135deg, #ff4f8b, #ffd700, #ff4f8b, #a855f7);
+    background-size: 300%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    animation: shimmer 4s linear infinite;
+    line-height: 1.1;
+    filter: drop-shadow(0 0 20px rgba(255,79,139,.5));
+  }
+
+  @keyframes cdTick {
+    0%   { transform: translateY(-6px); opacity: .4; }
+    100% { transform: translateY(0);    opacity: 1; }
+  }
+  @keyframes cdGlow {
+    0%,100% { box-shadow: 0 0 12px rgba(255,79,139,.3); }
+    50%      { box-shadow: 0 0 28px rgba(255,79,139,.7), 0 0 60px rgba(168,85,247,.4); }
+  }
 </style>
 </head>
 <body>
@@ -365,12 +437,7 @@
 <canvas id="starfield"></canvas>
 
 <!-- Header -->
-<header>
-  <span class="crown">👑</span>
-  <h1>Happy Birthday<br>Anu! 🎂</h1>
-  <p class="subtitle">My love, my world, my everything ✨</p>
-  <div class="hearts-row">💖 💕 💖 💕 💖</div>
-</header>
+<header id="main-header"></header>
 
 <!-- Tabs -->
 <div class="tabs">
@@ -1072,6 +1139,113 @@ function backToGames(){
   document.getElementById('trivia-game').style.display='none';
   document.getElementById('games-menu').style.display='grid';
 }
+
+// ══════════════════════════════════════════
+//  COUNTDOWN / BIRTHDAY HEADER
+// ══════════════════════════════════════════
+(function headerClock() {
+  const BDAY_MONTH = 12; // December
+  const BDAY_DAY   = 10;
+  const header     = document.getElementById('main-header');
+
+  function isBirthday() {
+    const now = new Date();
+    return now.getMonth() + 1 === BDAY_MONTH && now.getDate() === BDAY_DAY;
+  }
+
+  function nextBirthday() {
+    const now  = new Date();
+    const year = now.getMonth() + 1 > BDAY_MONTH ||
+                 (now.getMonth() + 1 === BDAY_MONTH && now.getDate() > BDAY_DAY)
+                 ? now.getFullYear() + 1
+                 : now.getFullYear();
+    return new Date(year, BDAY_MONTH - 1, BDAY_DAY, 0, 0, 0, 0);
+  }
+
+  // ── Birthday mode ──
+  function renderBirthday() {
+    header.innerHTML = `
+      <span id="birthday-crown">🎂</span>
+      <h1 class="bday-title">Happy Birthday<br>Anu! 🎉</h1>
+      <p class="subtitle">My love, my world, my everything ✨</p>
+      <div class="hearts-row">💖 💕 💖 💕 💖</div>
+    `;
+    // Kick confetti every few seconds all day
+    launchBirthdayConfetti();
+    setInterval(launchBirthdayConfetti, 4000);
+  }
+
+  function launchBirthdayConfetti() {
+    const colors = ['#ff4f8b','#ffd700','#a855f7','#38bdf8','#4ade80','#ff6b35','#f472b6'];
+    for (let i = 0; i < 30; i++) {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece';
+        const dx = randBetween(-120, 120);
+        el.style.cssText = `left:${randBetween(10,90)}vw;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};--dx:${dx}px;border-radius:${Math.random()>.5?'50%':'3px'};`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1400);
+      }, i * 60);
+    }
+  }
+
+  // ── Countdown mode ──
+  let prevVals = {};
+
+  function renderCountdown() {
+    if (!header.querySelector('.countdown-grid')) {
+      header.innerHTML = `
+        <span class="crown">🎀</span>
+        <h1>Anu's Big Day<br>Is Coming! 💖</h1>
+        <p class="subtitle">Counting every second for you ✨</p>
+        <div id="countdown-wrap">
+          <p class="countdown-label">🎂 December 10 — Her Birthday 🎂</p>
+          <div class="countdown-grid">
+            <div class="cd-box"><span class="cd-num" id="cd-days">--</span><span class="cd-unit">Days</span></div>
+            <div class="cd-box"><span class="cd-num" id="cd-hours">--</span><span class="cd-unit">Hours</span></div>
+            <div class="cd-box"><span class="cd-num" id="cd-mins">--</span><span class="cd-unit">Minutes</span></div>
+            <div class="cd-box"><span class="cd-num" id="cd-secs">--</span><span class="cd-unit">Seconds</span></div>
+          </div>
+        </div>
+        <div class="hearts-row" style="margin-top:10px">💖 💕 💖 💕 💖</div>
+      `;
+    }
+
+    const diff = nextBirthday() - Date.now();
+    if (diff <= 0) { renderBirthday(); return; }
+
+    const days  = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins  = Math.floor((diff % 3600000)  / 60000);
+    const secs  = Math.floor((diff % 60000)    / 1000);
+
+    function setUnit(id, val) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const str = String(val).padStart(2, '0');
+      if (prevVals[id] !== str) {
+        el.textContent = str;
+        el.classList.remove('tick');
+        void el.offsetWidth; // reflow
+        el.classList.add('tick');
+        prevVals[id] = str;
+      }
+    }
+
+    setUnit('cd-days',  days);
+    setUnit('cd-hours', hours);
+    setUnit('cd-mins',  mins);
+    setUnit('cd-secs',  secs);
+  }
+
+  // Boot
+  if (isBirthday()) {
+    renderBirthday();
+  } else {
+    renderCountdown();
+    setInterval(renderCountdown, 1000);
+  }
+})();
 
 // ══════════════════════════════════════════
 //  INIT
